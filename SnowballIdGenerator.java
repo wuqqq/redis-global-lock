@@ -20,7 +20,7 @@ import java.time.ZoneId;
 @Component
 public class SnowballIdGenerator {
 
-    private static final String UXID_SEQ_KEY = "uxid_seq";
+    private static final String SNOW_BALL_SEQ_KEY = "snow_ball_seq";
 
     /**
      * 开始时间毫秒值：2017-01-01 00:00:00
@@ -46,7 +46,7 @@ public class SnowballIdGenerator {
     }
 
     private long getIdSequence() {
-        return redisTemplate.opsForValue().increment(UXID_SEQ_KEY, 1L);
+        return redisTemplate.opsForValue().increment(SNOW_BALL_SEQ_KEY, 1L);
     }
 
     private long getNowMillis() {
