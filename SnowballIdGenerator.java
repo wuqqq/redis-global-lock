@@ -41,11 +41,11 @@ public class SnowballIdGenerator {
      */
     public long nextId() {
         long now = getNowMillis();
-        long sequence = getUxidSequence();
+        long sequence = getIdSequence();
         return (((now - startTime) / 1_000L) << sequenceBits) | sequence;
     }
 
-    private long getUxidSequence() {
+    private long getIdSequence() {
         return redisTemplate.opsForValue().increment(UXID_SEQ_KEY, 1L);
     }
 
