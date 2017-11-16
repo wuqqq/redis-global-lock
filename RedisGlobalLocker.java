@@ -92,6 +92,6 @@ public class RedisGlobalLocker {
                 });
             }
         }
-		keyHolder.remove();
+	keyHolder.remove();
     }
 }
