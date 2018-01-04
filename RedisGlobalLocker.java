@@ -77,21 +77,20 @@ public class RedisGlobalLocker {
             if (optional.isPresent()) {
                 final String key = optional.get().getKey();
                 final String value = optional.get().getValue();
-                redisTemplate.execute(new SessionCallback<Object>() {
-                    @SuppressWarnings({ "unchecked", "rawtypes" })
+                List<Object> txResult = redisTemplate.execute(new SessionCallback<List<Object>>() {
+                    @SuppressWarnings({ "rawtypes", "unchecked" })
                     @Override
-                    public Object execute(RedisOperations operations) throws DataAccessException {
-                        if (value.equals(redisTemplate.opsForValue().get(key))) {
-                            operations.watch(key);
-                            operations.multi();
-                            redisTemplate.delete(key);
-                            return operations.exec();
+                    public List<Object> execute(RedisOperations operations) throws DataAccessException {
+                        operations.watch(key);
+                        operations.multi();
+                        if (value.equals(operations.opsForValue().get(key))) {
+                            operations.delete(key);
                         }
-                        return null;
+                        return operations.exec();
                     }
                 });
             }
         }
-	keyHolder.remove();
+        keyHolder.remove();
     }
 }
