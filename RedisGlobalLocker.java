@@ -29,9 +29,6 @@ public class RedisGlobalLocker {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    @Autowired
-    private SnowballIdGenerator snowballIdGenerator;
-
     /**
      * 获取锁
      * 
@@ -40,7 +37,7 @@ public class RedisGlobalLocker {
      * @param time
      */
     public void lock(String key, final String expx, final long time) {
-        String id = String.valueOf(snowballIdGenerator.nextId());
+        String id = UUID.randomUUID().toString();
         Map<String, String> keyId = new HashMap<>(1);
         keyId.put(key, id);
         keyHolder.set(keyId);
