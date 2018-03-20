@@ -1,8 +1,10 @@
 /**
  * Copyright (C), 2011-2017, 微贷网.
  */
-package com.weidai.ucenterx.common;
+package com.weidai.mario.goods.biz.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisCallback;
@@ -21,6 +23,8 @@ import java.util.*;
  */
 @Component
 public class RedisGlobalLocker {
+
+    private static final Logger logger = LoggerFactory.getLogger(RedisGlobalLocker.class);
 
     private static final ThreadLocal<Map<String, String>> keyHolder = new ThreadLocal<>();
 
@@ -79,13 +83,17 @@ public class RedisGlobalLocker {
                     @Override
                     public List<Object> execute(RedisOperations operations) throws DataAccessException {
                         operations.watch(key);
-                        operations.multi();
-                        if (value.equals(operations.opsForValue().get(key))) {
+                        String remoteVal = String.valueOf(operations.opsForValue().get(key));
+                        if (value.equals(remoteVal)) {
+                            operations.multi();
                             operations.delete(key);
                         }
                         return operations.exec();
                     }
                 });
+                if (txResult == null) {
+                    logger.warn("redis global lock: {} has been changed", key);
+                }
             }
         }
         keyHolder.remove();
