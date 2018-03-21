@@ -26,7 +26,7 @@ public class RedisGlobalLocker {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisGlobalLocker.class);
 
-    private static final ThreadLocal<Map<String, String>> keyHolder = new ThreadLocal<>();
+    private static final ThreadLocal<UuidLock> keyHolder = new ThreadLocal<>();
 
     private static final Random rnd = new Random();
 
@@ -41,23 +41,25 @@ public class RedisGlobalLocker {
      * @param time
      */
     public void lock(String key, final String expx, final long time) {
-        String id = UUID.randomUUID().toString();
-        Map<String, String> keyId = new HashMap<>(1);
-        keyId.put(key, id);
-        keyHolder.set(keyId);
+        UuidLock lock = new UuidLock(key);
+        keyHolder.set(lock);
         long timeout = 200L;
-        while (!tryLock(key, id, expx, time)) {
+        while (!tryLock(key, lock.getUuid(), expx, time)) {
             try {
                 // 设置线程等待时间窗，取一个公平的随机数，防止出现线程饥饿
                 Thread.sleep(randomLongWithBoundary(timeout));
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignore) {
             }
         }
     }
 
-    private long randomLongWithBoundary(long max) {
-        long min = 1L;
-        return min + (long) (rnd.nextFloat() * (max - min));
+    public boolean tryLock(String key, final String expx, final long time) {
+        UuidLock lock = new UuidLock(key);
+        keyHolder.set(lock);
+        boolean permit = tryLock(key, lock.getUuid(), expx, time);
+        if (!permit)
+            keyHolder.remove();
+        return permit;
     }
 
     private boolean tryLock(String key, String value, final String expx, final long time) {
@@ -72,30 +74,50 @@ public class RedisGlobalLocker {
     }
 
     public void unlock() {
-        Map<String, String> keyId = keyHolder.get();
-        if (keyId != null) {
-            Optional<Map.Entry<String, String>> optional = keyId.entrySet().stream().findFirst();
-            if (optional.isPresent()) {
-                final String key = optional.get().getKey();
-                final String value = optional.get().getValue();
-                List<Object> txResult = redisTemplate.execute(new SessionCallback<List<Object>>() {
-                    @SuppressWarnings({ "rawtypes", "unchecked" })
-                    @Override
-                    public List<Object> execute(RedisOperations operations) throws DataAccessException {
-                        operations.watch(key);
-                        String remoteVal = String.valueOf(operations.opsForValue().get(key));
-                        if (value.equals(remoteVal)) {
-                            operations.multi();
-                            operations.delete(key);
-                        }
-                        return operations.exec();
+        UuidLock lock = keyHolder.get();
+        if (lock != null) {
+            String key = lock.getKey();
+            String uuid = lock.getUuid();
+            List<Object> txResult = redisTemplate.execute(new SessionCallback<List<Object>>() {
+                @Override
+                public <K, V> List<Object> execute(RedisOperations<K, V> operations) throws DataAccessException {
+                    StringRedisTemplate template = (StringRedisTemplate) operations;
+                    template.watch(key);
+                    if (uuid.equals(template.opsForValue().get(key))) {
+                        template.multi();
+                        template.delete(key);
                     }
-                });
-                if (txResult == null) {
-                    logger.warn("redis global lock: {} has been changed", key);
+                    return template.exec();
                 }
+            });
+            if (txResult == null) {
+                logger.warn("redis global lock: {} has been changed", key);
             }
         }
         keyHolder.remove();
+    }
+
+    private long randomLongWithBoundary(long max) {
+        long min = 2L;
+        return min + (long) (rnd.nextFloat() * (max - min));
+    }
+
+    private class UuidLock {
+        private String key;
+
+        private String uuid;
+
+        UuidLock(String key) {
+            this.key = key;
+            this.uuid = UUID.randomUUID().toString();
+        }
+
+        String getKey() {
+            return key;
+        }
+
+        String getUuid() {
+            return uuid;
+        }
     }
 }
