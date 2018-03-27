@@ -1,7 +1,7 @@
 /**
  * Copyright (C), 2011-2017, 微贷网.
  */
-package com.weidai.mario.goods.biz.util;
+package com.weidai.ucenterx.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 import redis.clients.jedis.Jedis;
 
 import java.util.*;
@@ -90,9 +91,8 @@ public class RedisGlobalLocker {
                     return template.exec();
                 }
             });
-            if (txResult == null) {
+            if (CollectionUtils.isEmpty(txResult))
                 logger.warn("redis global lock: {} has been changed", key);
-            }
         }
         keyHolder.remove();
     }
