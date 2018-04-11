@@ -1,6 +1,3 @@
-/**
- * Copyright (C), 2011-2017, 微贷网.
- */
 package com.weidai.ucenterx.common;
 
 import org.springframework.beans.factory.annotation.Autowired;
