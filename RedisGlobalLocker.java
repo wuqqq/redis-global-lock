@@ -1,28 +1,26 @@
-/**
- * Copyright (C), 2011-2017, 微贷网.
- */
-package com.weidai.ucenterx.common;
+package com.weidai.mario.auth.client.util;
 
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import redis.clients.jedis.Jedis;
 
-import java.util.*;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
 
 /**
  * redis分布式锁
  * 
  * @author wuqi 2017/10/10 0010.
  */
-@Component
 public class RedisGlobalLocker {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisGlobalLocker.class);
@@ -31,8 +29,13 @@ public class RedisGlobalLocker {
 
     private static final Random rnd = new Random();
 
-    @Autowired
-    private StringRedisTemplate redisTemplate;
+    @Getter
+    private final StringRedisTemplate redisTemplate;
+
+    public RedisGlobalLocker(StringRedisTemplate redisTemplate) {
+        Assert.notNull(redisTemplate, "redisTemplate mustn't be null");
+        this.redisTemplate = redisTemplate;
+    }
 
     /**
      * 获取锁
@@ -84,11 +87,14 @@ public class RedisGlobalLocker {
                 public <K, V> List<Object> execute(RedisOperations<K, V> operations) throws DataAccessException {
                     StringRedisTemplate template = (StringRedisTemplate) operations;
                     template.watch(key);
-                    if (uuid.equals(template.opsForValue().get(key))) {
-                        template.multi();
-                        template.delete(key);
-                    }
-                    return template.exec();
+                    boolean noChange = uuid.equals(template.opsForValue().get(key));
+                    template.multi();
+                    template.delete(key);
+                    if (noChange)
+                        return template.exec();
+                    else
+                        template.discard();
+                    return null;
                 }
             });
             if (CollectionUtils.isEmpty(txResult))
