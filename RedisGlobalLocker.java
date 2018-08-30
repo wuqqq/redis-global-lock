@@ -1,4 +1,4 @@
-package com.weidai.mario.auth.client.util;
+package org.wuqqq.util;
 
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -13,8 +13,8 @@ import org.springframework.util.CollectionUtils;
 import redis.clients.jedis.Jedis;
 
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * redis分布式锁
@@ -27,7 +27,7 @@ public class RedisGlobalLocker {
 
     private static final ThreadLocal<UuidLock> keyHolder = new ThreadLocal<>();
 
-    private static final Random rnd = new Random();
+    private static final ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
     @Getter
     private final StringRedisTemplate redisTemplate;
