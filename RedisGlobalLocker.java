@@ -27,8 +27,6 @@ public class RedisGlobalLocker {
 
     private static final ThreadLocal<UuidLock> keyHolder = new ThreadLocal<>();
 
-    private static final ThreadLocalRandom rnd = ThreadLocalRandom.current();
-
     @Getter
     private final StringRedisTemplate redisTemplate;
 
@@ -105,7 +103,7 @@ public class RedisGlobalLocker {
 
     private long randomLongWithBoundary(long max) {
         long min = 2L;
-        return min + (long) (rnd.nextFloat() * (max - min));
+        return min + (long) (ThreadLocalRandom.current().nextFloat() * (max - min));
     }
 
     private class UuidLock {
